@@ -5,6 +5,7 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::LinkedList;
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
 
 use rocksdb::{checkpoint::Checkpoint, ColumnFamilyDescriptor, WriteBatch};
 
@@ -26,7 +27,7 @@ fn column_families() -> Vec<ColumnFamilyDescriptor> {
 
 /// A handle to a Merkle key/value store backed by RocksDB.
 pub struct Merk {
-    pub(crate) tree: Cell<Option<Tree>>,
+    pub(crate) tree: RwLock<Option<Tree>>,
     pub(crate) db: rocksdb::DB,
     pub(crate) path: PathBuf,
 }
@@ -52,7 +53,7 @@ impl Merk {
         let db = rocksdb::DB::open_cf_descriptors(&db_opts, &path_buf, column_families())?;
 
         let mut merk = Merk {
-            tree: Cell::new(None),
+            tree: RwLock::new(None),
             db,
             path: path_buf,
         };
@@ -192,14 +193,19 @@ impl Merk {
     /// unsafe { store.apply_unchecked(batch, &[]).unwrap() };
     /// ```
     pub unsafe fn apply_unchecked(&mut self, batch: &Batch, aux: &Batch) -> Result<()> {
-        let maybe_walker = self
-            .tree
-            .take()
-            .take()
-            .map(|tree| Walker::new(tree, self.source()));
+        let deleted_keys = {
+            let mut tree = self
+                .tree
+                .write()
+                .unwrap();
+            let maybe_walker = tree
+                .take()
+                .map(|tree| Walker::new(tree, self.source()));
 
-        let (maybe_tree, deleted_keys) = Walker::apply_to(maybe_walker, batch, self.source())?;
-        self.tree.set(maybe_tree);
+            let (maybe_tree, deleted_keys) = Walker::apply_to(maybe_walker, batch, self.source())?;
+            *tree = maybe_tree;
+            deleted_keys
+        };
 
         // commit changes to db
         self.commit(deleted_keys, aux)
@@ -274,7 +280,7 @@ impl Merk {
         let internal_cf = self.db.cf_handle(INTERNAL_CF_NAME).unwrap();
         let aux_cf = self.db.cf_handle(AUX_CF_NAME).unwrap();
 
-        let mut batch = rocksdb::WriteBatch::default();
+        let mut batch = WriteBatch::default();
         let mut to_batch = self.use_tree_mut(|maybe_tree| -> UseTreeMutResult {
             // TODO: concurrent commit
             if let Some(tree) = maybe_tree {
@@ -321,13 +327,11 @@ impl Merk {
     }
 
     pub fn walk<T>(&self, f: impl FnOnce(Option<RefWalker<MerkSource>>) -> T) -> T {
-        let mut tree = self.tree.take();
+        let mut tree = self.tree.write().unwrap();
         let maybe_walker = tree
             .as_mut()
             .map(|tree| RefWalker::new(tree, self.source()));
-        let res = f(maybe_walker);
-        self.tree.set(tree);
-        res
+        f(maybe_walker)
     }
 
     pub fn raw_iter(&self) -> rocksdb::DBRawIterator {
@@ -344,16 +348,14 @@ impl Merk {
     }
 
     fn use_tree<T>(&self, mut f: impl FnMut(Option<&Tree>) -> T) -> T {
-        let tree = self.tree.take();
+        let tree = self.tree.read().unwrap();
         let res = f(tree.as_ref());
-        self.tree.set(tree);
         res
     }
 
     fn use_tree_mut<T>(&self, mut f: impl FnMut(Option<&mut Tree>) -> T) -> T {
-        let mut tree = self.tree.take();
+        let mut tree = self.tree.write().unwrap();
         let res = f(tree.as_mut());
-        self.tree.set(tree);
         res
     }
 
@@ -383,7 +385,7 @@ impl Merk {
             .get_pinned_cf(internal_cf, ROOT_KEY_KEY)?
             .map(|root_key| fetch_existing_node(&self.db, &root_key))
             .transpose()?;
-        self.tree = Cell::new(tree);
+        self.tree = RwLock::new(tree);
         Ok(())
     }
 }
@@ -609,8 +611,8 @@ mod test {
             let mut merk = Merk::open(&path).unwrap();
             let batch = make_batch_seq(1..10_000);
             merk.apply(batch.as_slice(), &[]).unwrap();
-            let mut tree = merk.tree.take().unwrap();
-            let walker = RefWalker::new(&mut tree, merk.source());
+            let mut tree =  merk.tree.write().unwrap();
+            let walker = RefWalker::new(tree.as_mut().unwrap(), merk.source());
 
             let mut nodes = vec![];
             collect(walker, &mut nodes);
@@ -618,8 +620,8 @@ mod test {
         };
 
         let merk = TempMerk::open(&path).unwrap();
-        let mut tree = merk.tree.take().unwrap();
-        let walker = RefWalker::new(&mut tree, merk.source());
+        let mut tree =  merk.tree.write().unwrap();
+        let walker = RefWalker::new(tree.as_mut().unwrap(), merk.source());
 
         let mut reopen_nodes = vec![];
         collect(walker, &mut reopen_nodes);
