@@ -1,7 +1,6 @@
 pub mod chunks;
 pub mod restore;
 
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::LinkedList;
 use std::path::{Path, PathBuf};
@@ -9,7 +8,7 @@ use std::sync::RwLock;
 
 use rocksdb::{checkpoint::Checkpoint, ColumnFamilyDescriptor, WriteBatch};
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::proofs::{encode_into, query::QueryItem, Query};
 use crate::tree::{Batch, Commit, Fetch, Hash, Link, Op, RefWalker, Tree, Walker, NULL_HASH};
 
