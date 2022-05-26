@@ -161,7 +161,8 @@ mod tests {
     fn len_small() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..256);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let chunks = merk.chunks().unwrap();
         assert_eq!(chunks.len(), 1);
@@ -172,7 +173,8 @@ mod tests {
     fn len_big() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..10_000);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let chunks = merk.chunks().unwrap();
         assert_eq!(chunks.len(), 129);
@@ -183,7 +185,8 @@ mod tests {
     fn generate_and_verify_chunks() -> Result<()> {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..10_000);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let mut chunks = merk.chunks().unwrap().into_iter().map(Result::unwrap);
 
@@ -213,7 +216,8 @@ mod tests {
         let original_chunks = {
             let mut merk = Merk::open(&path).unwrap();
             let batch = make_batch_seq(1..10);
-            merk.apply(batch.as_slice(), &[]).unwrap();
+            merk.apply(batch.as_slice()).unwrap();
+            merk.commit(&[]).expect("commit failed");
 
             merk.chunks()
                 .unwrap()
@@ -235,7 +239,8 @@ mod tests {
     fn chunks_from_checkpoint() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..10);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let path: std::path::PathBuf = "generate_and_verify_chunks_from_checkpoint.db".into();
         if path.exists() {
@@ -257,7 +262,8 @@ mod tests {
     fn random_access_chunks() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..111);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let chunks = merk
             .chunks()
@@ -291,7 +297,8 @@ mod tests {
     fn test_chunk_index_oob() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..42);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let mut producer = merk.chunks().unwrap();
         let _chunk = producer.chunk(50000).unwrap();
@@ -301,7 +308,8 @@ mod tests {
     fn test_chunk_index_gt_1_access() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..513);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let mut producer = merk.chunks().unwrap();
         println!("length: {}", producer.len());
@@ -382,7 +390,8 @@ mod tests {
     fn test_next_chunk_index_oob() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(1..42);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let mut producer = merk.chunks().unwrap();
         let _chunk1 = producer.next_chunk();
