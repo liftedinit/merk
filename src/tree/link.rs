@@ -223,7 +223,7 @@ impl Encode for Link {
 
         debug_assert!(key.len() < 256, "Key length must be less than 256");
 
-        out.write_all(&[key.len() as u8])?;
+        (key.len() as u16).encode_into(out)?;
         out.write_all(key)?;
 
         out.write_all(hash)?;
@@ -279,9 +279,9 @@ impl Decode for Link {
             ref mut child_heights,
         } = self
         {
-            let length = read_u8(&mut input)? as usize;
+            let length: u16 = Decode::decode(&mut input)?;
 
-            key.resize(length, 0);
+            key.resize(length as usize, 0);
             input.read_exact(key.as_mut())?;
 
             input.read_exact(&mut hash[..])?;

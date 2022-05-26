@@ -18,12 +18,10 @@ impl Encode for Op {
                 dest.write_all(kv_hash)?;
             }
             Op::Push(Node::KV(key, value)) => {
-                debug_assert!(key.len() < 256);
-                debug_assert!(value.len() < 65536);
-
-                dest.write_all(&[0x03, key.len() as u8])?;
+                dest.write_all(&[0x03])?;
+                (key.len() as u16).encode_into(dest)?;
                 dest.write_all(key)?;
-                (value.len() as u16).encode_into(dest)?;
+                (value.len() as u32).encode_into(dest)?;
                 dest.write_all(value)?;
             }
             Op::Parent => dest.write_all(&[0x10])?,
@@ -59,11 +57,11 @@ impl Decode for Op {
                 Op::Push(Node::KVHash(hash))
             }
             0x03 => {
-                let key_len: u8 = Decode::decode(&mut input)?;
+                let key_len: u16 = Decode::decode(&mut input)?;
                 let mut key = vec![0; key_len as usize];
                 input.read_exact(key.as_mut_slice())?;
 
-                let value_len: u16 = Decode::decode(&mut input)?;
+                let value_len: u32 = Decode::decode(&mut input)?;
                 let mut value = vec![0; value_len as usize];
                 input.read_exact(value.as_mut_slice())?;
 
@@ -177,7 +175,7 @@ mod test {
 
         let mut bytes = vec![];
         op.encode_into(&mut bytes).unwrap();
-        assert_eq!(bytes, vec![0x03, 3, 1, 2, 3, 0, 3, 4, 5, 6]);
+        assert_eq!(bytes, vec![0x03, 0, 3, 1, 2, 3, 0, 0, 0, 3, 4, 5, 6]);
     }
 
     #[test]
@@ -203,7 +201,8 @@ mod test {
     #[test]
     #[should_panic]
     fn encode_push_kv_long_key() {
-        let op = Op::Push(Node::KV(vec![123; 300], vec![4, 5, 6]));
+        let key = vec![123; 100000];
+        let op = Op::Push(Node::KV(key, vec![4, 5, 6]));
         let mut bytes = vec![];
         op.encode_into(&mut bytes).unwrap();
     }
@@ -230,7 +229,7 @@ mod test {
 
     #[test]
     fn decode_push_kv() {
-        let bytes = [0x03, 3, 1, 2, 3, 0, 3, 4, 5, 6];
+        let bytes = [0x03, 0, 3, 1, 2, 3, 0, 0, 0, 3, 4, 5, 6];
         let op = Op::decode(&bytes[..]).expect("decode failed");
         assert_eq!(op, Op::Push(Node::KV(vec![1, 2, 3], vec![4, 5, 6])));
     }

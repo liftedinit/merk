@@ -11,19 +11,19 @@ pub type Hash = [u8; HASH_LENGTH];
 
 /// Hashes a key/value pair.
 ///
-/// **NOTE:** This will panic if the key is longer than 255 bytes, or the value
-/// is longer than 65,535 bytes.
+/// **NOTE:** This will panic if the key is longer than 65535 bytes, or the value
+/// is longer than 4 gigabytes.
 pub fn kv_hash(key: &[u8], value: &[u8]) -> Hash {
     // TODO: result instead of panic
     // TODO: make generic to allow other hashers
     let mut hasher = blake3::Hasher::new();
-    // panics if key is longer than 255!
-    let key_length = u8::try_from(key.len()).expect("key must be less than 256 bytes");
+    // panics if key is longer than 64kb!
+    let key_length = u16::try_from(key.len()).expect("key must be less than 65,536 bytes");
     hasher.update(&key_length.to_be_bytes());
     hasher.update(key);
 
-    // panics if value is longer than 65535!
-    let val_length = u16::try_from(value.len()).expect("value must be less than 65,536 bytes");
+    // panics if value is longer than 4GB!
+    let val_length = u32::try_from(value.len()).expect("value must be less than 4 gigabytes");
     hasher.update(&val_length.to_be_bytes());
     hasher.update(value);
 

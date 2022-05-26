@@ -338,6 +338,23 @@ impl Merk {
         self.db.raw_iterator()
     }
 
+    pub fn iter_opt(
+        &self,
+        mode: rocksdb::IteratorMode,
+        readopts: rocksdb::ReadOptions,
+    ) -> rocksdb::DBIterator {
+        self.db.iterator_opt(mode, readopts)
+    }
+
+    pub fn iter_opt_aux(
+        &self,
+        mode: rocksdb::IteratorMode,
+        readopts: rocksdb::ReadOptions,
+    ) -> rocksdb::DBIterator {
+        let aux_cf = self.db.cf_handle("aux").unwrap();
+        self.db.iterator_cf_opt(aux_cf, readopts, mode)
+    }
+
     pub fn checkpoint<P: AsRef<Path>>(&self, path: P) -> Result<Merk> {
         Checkpoint::new(&self.db)?.create_checkpoint(&path)?;
         Merk::open(path)
@@ -481,8 +498,11 @@ mod test {
         assert_eq!(
             merk.root_hash(),
             [
-                99, 81, 104, 29, 169, 195, 53, 48, 134, 74, 250, 47, 77, 121, 157, 227, 139, 241,
-                250, 216, 78, 87, 152, 116, 252, 116, 132, 16, 150, 163, 107, 30
+                // With u8 key length and u16 value length
+                // 99, 81, 104, 29, 169, 195, 53, 48, 134, 74, 250, 47, 77, 121, 157, 227, 139, 241,
+                // 250, 216, 78, 87, 152, 116, 252, 116, 132, 16, 150, 163, 107, 30
+                209, 221, 203, 210, 139, 72, 16, 141, 213, 16, 215, 47, 79, 77, 217, 143, 69, 4, 61,
+                245, 145, 114, 255, 56, 214, 90, 19, 236, 90, 119, 128, 29
             ]
         );
     }
