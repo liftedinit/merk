@@ -409,10 +409,11 @@ mod tests {
     fn leaf_chunk_roundtrip() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(0..31);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
         let root_key = {
-            let mut tree = merk.tree.read().unwrap();
+            let tree = merk.tree.read().unwrap();
             tree.as_ref().unwrap().key().to_vec()
         };
 
