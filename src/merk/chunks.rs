@@ -96,7 +96,8 @@ impl<'a> ChunkProducer<'a> {
             return Ok(self.trunk.encode()?);
         }
 
-        assert!(!(self.index >= self.len()), "Called next_chunk after end");
+        let len = self.len();
+        assert!(!(self.index >= len), "Called next_chunk after end");
 
         let end_key = self.chunk_boundaries.get(self.index - 1);
         let end_key_slice = end_key.as_ref().map(|k| k.as_slice());
@@ -300,7 +301,7 @@ mod tests {
         merk.commit(&[]).expect("commit failed");
 
         let mut producer = merk.chunks().unwrap();
-        let _chunk = producer.chunk(50000).unwrap();
+        let _chunk = producer.chunk(500000).unwrap();
     }
 
     #[test]

@@ -221,7 +221,7 @@ impl Encode for Link {
             Link::Modified { .. } => panic!("No encoding for Link::Modified"),
         };
 
-        debug_assert!(key.len() < 256, "Key length must be less than 256");
+        debug_assert!(key.len() < 65536, "Key length must be less than 65536");
 
         (key.len() as u16).encode_into(out)?;
         out.write_all(key)?;
@@ -235,13 +235,16 @@ impl Encode for Link {
 
     #[inline]
     fn encoding_length(&self) -> Result<usize> {
-        debug_assert!(self.key().len() < 256, "Key length must be less than 256");
+        debug_assert!(
+            self.key().len() < 65536,
+            "Key length must be less than 65536"
+        );
 
         Ok(match self {
-            Link::Reference { key, .. } => 1 + key.len() + 32 + 2,
+            Link::Reference { key, .. } => 2 + key.len() + 32 + 2,
             Link::Modified { .. } => panic!("No encoding for Link::Modified"),
-            Link::Uncommitted { tree, .. } => 1 + tree.key().len() + 32 + 2,
-            Link::Loaded { tree, .. } => 1 + tree.key().len() + 32 + 2,
+            Link::Uncommitted { tree, .. } => 2 + tree.key().len() + 32 + 2,
+            Link::Loaded { tree, .. } => 2 + tree.key().len() + 32 + 2,
         })
     }
 }
@@ -438,15 +441,15 @@ mod test {
             child_heights: (123, 124),
             hash: [55; 32],
         };
-        assert_eq!(link.encoding_length().unwrap(), 38);
+        assert_eq!(link.encoding_length().unwrap(), 39);
 
         let mut bytes = vec![];
         link.encode_into(&mut bytes).unwrap();
         assert_eq!(
             bytes,
             vec![
-                3, 1, 2, 3, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55,
-                55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 123, 124
+                0, 3, 1, 2, 3, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55,
+                55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 123, 124
             ]
         );
     }
@@ -455,7 +458,7 @@ mod test {
     #[should_panic]
     fn encode_link_long_key() {
         let link = Link::Reference {
-            key: vec![123; 300],
+            key: vec![123; 300000],
             child_heights: (123, 124),
             hash: [55; 32],
         };
