@@ -354,6 +354,23 @@ impl Merk {
         self.db.raw_iterator()
     }
 
+    pub fn iter_opt(
+        &self,
+        mode: rocksdb::IteratorMode,
+        readopts: rocksdb::ReadOptions,
+    ) -> rocksdb::DBIterator {
+        self.db.iterator_opt(mode, readopts)
+    }
+
+    pub fn iter_opt_aux(
+        &self,
+        mode: rocksdb::IteratorMode,
+        readopts: rocksdb::ReadOptions,
+    ) -> rocksdb::DBIterator {
+        let aux_cf = self.db.cf_handle("aux").unwrap();
+        self.db.iterator_cf_opt(aux_cf, readopts, mode)
+    }
+
     pub fn checkpoint<P: AsRef<Path>>(&self, path: P) -> Result<Merk> {
         Checkpoint::new(&self.db)?.create_checkpoint(&path)?;
         Merk::open(path)
