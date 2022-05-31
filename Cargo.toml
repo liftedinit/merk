@@ -31,10 +31,6 @@ optional = true
 version = "1.3.2" 
 optional = true
 
-[dependencies.failure]
-version = "0.1.6"
-optional = true
-
 [dependencies.ed]
 git = "https://github.com/nomic-io/ed"
 rev = "dd28e9f9e7c97827dde943ee8decfcdf25b3cc83"
@@ -68,12 +64,10 @@ full = ["rand",
         "colored",
         "num_cpus",
         "byteorder",
-        "failure",
         "ed",
         "blake3",
         "jemallocator"
 ]
 verify = ["ed",
-          "failure",
           "blake3"
 ]
