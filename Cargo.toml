@@ -65,8 +65,7 @@ full = ["rand",
         "num_cpus",
         "byteorder",
         "ed",
-        "blake3",
-        "jemallocator"
+        "blake3"
 ]
 verify = ["ed",
           "blake3"
