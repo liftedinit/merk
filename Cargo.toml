@@ -11,10 +11,6 @@ license = "MIT"
 [dependencies.thiserror]
 version = "1.0.29"
 
-[dependencies.time]
-version = "0.1.42"
-optional = true
-
 [dependencies.hex]
 version = "0.4.2"
 optional = true
@@ -59,7 +55,6 @@ optional = true
 default = ["full", "verify"]
 full = ["rand",
         "rocksdb",
-        "time",
         "hex",
         "colored",
         "num_cpus",
