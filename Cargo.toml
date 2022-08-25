@@ -42,7 +42,7 @@ features = ["small_rng"]
 optional = true
 
 [dependencies.rocksdb]
-version = "0.18"
+version = "0.19"
 default-features = false
 optional = true
 
@@ -60,8 +60,7 @@ full = ["rand",
         "num_cpus",
         "byteorder",
         "ed",
-        "blake3",
-        "jemallocator"
+        "blake3"
 ]
 verify = ["ed",
           "blake3"
