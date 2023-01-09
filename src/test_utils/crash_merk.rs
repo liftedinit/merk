@@ -75,8 +75,9 @@ mod tests {
         let path = std::thread::current().name().unwrap().to_owned();
 
         let mut merk = CrashMerk::open(&path).expect("failed to open merk");
-        merk.apply(&[(vec![1, 2, 3], Op::Put(vec![4, 5, 6]))], &[])
+        merk.apply(&[(vec![1, 2, 3], Op::Put(vec![4, 5, 6]))])
             .expect("apply failed");
+        merk.commit(&[]).expect("commit failed");
         unsafe {
             merk.crash().unwrap();
         }
