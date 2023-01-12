@@ -1,6 +1,7 @@
 use super::{Node, Op};
 use crate::error::{Error, Result};
 use crate::tree::{kv_hash, node_hash, Hash, NULL_HASH};
+use blake3::Hasher;
 
 /// Contains a tree's child node and its hash. The hash can always be assumed to
 /// be up-to-date.
@@ -45,13 +46,13 @@ impl Tree {
     /// Gets or computes the hash for this tree node.
     pub fn hash(&self) -> Result<Hash> {
         fn compute_hash(tree: &Tree, kv_hash: Hash) -> Hash {
-            node_hash(&kv_hash, &tree.child_hash(true), &tree.child_hash(false))
+            node_hash::<blake3::Hasher>(&kv_hash, &tree.child_hash(true), &tree.child_hash(false))
         }
 
         match &self.node {
             Node::Hash(hash) => Ok(*hash),
             Node::KVHash(kv_hash) => Ok(compute_hash(self, *kv_hash)),
-            Node::KV(key, value) => kv_hash(key.as_slice(), value.as_slice())
+            Node::KV(key, value) => kv_hash::<Hasher>(key.as_slice(), value.as_slice())
                 .map(|kv_hash| compute_hash(self, kv_hash))
                 .map_err(Into::into),
         }
