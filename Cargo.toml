@@ -51,9 +51,6 @@ version = "0.3.2"
 features = ["disable_initial_exec_tls"]
 optional = true
 
-[dependencies.digest]
-version = "0.10"
-
 [features]
 default = ["full", "verify"]
 full = ["rand",
