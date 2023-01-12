@@ -1,4 +1,4 @@
-use super::{Fetch, Link, Tree, Walker};
+use super::{Fetch, Tree, Walker};
 use crate::error::Result;
 use std::collections::LinkedList;
 use std::fmt;
@@ -33,9 +33,10 @@ pub type Batch = [BatchEntry];
 /// which always keeps the state in memory.
 #[derive(Clone)]
 pub struct PanicSource {}
+
 impl Fetch for PanicSource {
-    fn fetch(&self, _link: &Link) -> Result<Tree> {
-        unreachable!("'fetch' should not have been called")
+    fn fetch_by_key(&self, _: &[u8]) -> Result<Option<Tree>> {
+        unreachable!()
     }
 }
 
@@ -116,24 +117,27 @@ where
                 // TODO: take vec from batch so we don't need to clone
                 Put(value) => self.with_value(value.to_vec()),
                 Delete => {
-                    // TODO: we shouldn't have to do this as 2 different calls to apply
                     let source = self.clone_source();
-                    let wrap = |maybe_tree: Option<Tree>| {
-                        maybe_tree.map(|tree| Self::new(tree, source.clone()))
-                    };
                     let key = self.tree().key().to_vec();
-                    let maybe_tree = self.remove()?;
 
-                    let (maybe_tree, mut deleted_keys) =
-                        Self::apply_to(maybe_tree, &batch[..index], source.clone())?;
-                    let maybe_walker = wrap(maybe_tree);
+                    let (walker, maybe_left) = self.detach(true)?;
+                    let (walker, maybe_right) = walker.detach(false)?;
 
-                    let (maybe_tree, mut deleted_keys_right) =
-                        Self::apply_to(maybe_walker, &batch[index + 1..], source.clone())?;
-                    let maybe_walker = wrap(maybe_tree);
+                    let (maybe_left, mut deleted_keys) =
+                        Self::apply_to(maybe_left, &batch[..index], source.clone())?;
 
-                    deleted_keys.append(&mut deleted_keys_right);
                     deleted_keys.push_back(key);
+
+                    let (maybe_right, mut deleted_keys_right) =
+                        Self::apply_to(maybe_right, &batch[index + 1..], source)?;
+                    deleted_keys.append(&mut deleted_keys_right);
+
+                    let maybe_walker = walker
+                        .attach(true, maybe_left)
+                        .attach(false, maybe_right)
+                        .remove()?
+                        .map(|w| w.maybe_balance())
+                        .transpose()?;
 
                     return Ok((maybe_walker, deleted_keys));
                 }
@@ -295,7 +299,7 @@ where
 mod test {
     use super::*;
     use crate::test_utils::{
-        apply_memonly, assert_tree_invariants, del_entry, make_tree_seq, seq_key,
+        apply_memonly, assert_tree_invariants, del_entry, make_tree_seq, put_entry, seq_key,
     };
     use crate::tree::*;
 
@@ -406,8 +410,42 @@ mod test {
             .expect("apply errored");
         maybe_walker.expect("should be Some");
         let mut deleted_keys: Vec<&Vec<u8>> = deleted_keys.iter().collect();
-        deleted_keys.sort_by(|a, b| a.cmp(&b));
+        deleted_keys.sort();
         assert_eq!(deleted_keys, vec![&seq_key(7), &seq_key(9)]);
+    }
+
+    #[test]
+    fn rebalanced_delete() {
+        let tree = make_tree_seq(7);
+
+        let walker = Walker::new(tree, PanicSource {})
+            .apply(&[(vec![0; 20], Delete)])
+            .expect("apply errored")
+            .0
+            .unwrap();
+
+        let batch = [
+            put_entry(0),
+            put_entry(1),
+            put_entry(2),
+            put_entry(3),
+            del_entry(4),
+            del_entry(5),
+            del_entry(6),
+        ];
+        let (maybe_walker, deleted_keys) = walker.apply(&batch).expect("apply errored");
+        let walker = maybe_walker.expect("should be Some");
+
+        let mut deleted_keys: Vec<&Vec<u8>> = deleted_keys.iter().collect();
+        deleted_keys.sort();
+        assert_eq!(deleted_keys, vec![&seq_key(4), &seq_key(5), &seq_key(6)]);
+
+        let mut iter = walker.tree().iter();
+        assert_eq!(iter.next().unwrap().0, seq_key(0));
+        assert_eq!(iter.next().unwrap().0, seq_key(1));
+        assert_eq!(iter.next().unwrap().0, seq_key(2));
+        assert_eq!(iter.next().unwrap().0, seq_key(3));
+        assert!(iter.next().is_none());
     }
 
     #[test]
@@ -478,5 +516,21 @@ mod test {
         assert_eq!(tree.key(), &[63]);
         assert_eq!(tree.child(true).expect("expected child").key(), &[31]);
         assert_eq!(tree.child(false).expect("expected child").key(), &[79]);
+    }
+
+    #[test]
+    fn delete_recursive_large() {
+        let tree = make_tree_seq(2_500);
+
+        let mut batch = vec![];
+        for i in 500..2_000 {
+            batch.push(del_entry(i));
+        }
+
+        let (maybe_walker, deleted_keys) = Walker::new(tree, PanicSource {})
+            .apply(&batch)
+            .expect("apply errored");
+        maybe_walker.expect("should be Some");
+        assert_eq!(deleted_keys.len(), 1_500);
     }
 }
