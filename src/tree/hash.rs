@@ -15,13 +15,13 @@ pub type Hash = [u8; HASH_LENGTH];
 /// is longer than 65,535 bytes.
 pub fn kv_hash(key: &[u8], value: &[u8]) -> Result<Hash, TryFromIntError> {
     let mut hasher = blake3::Hasher::new();
-    u32::try_from(key.len())
-        .and_then(|key| u32::try_from(value.len()).map(|value| (key, value)))
+    u8::try_from(key.len())
+        .and_then(|key| u16::try_from(value.len()).map(|value| (key, value)))
         .map(|(key_length, val_length)| {
-            hasher.update(&key_length.to_le_bytes());
+            hasher.update(&key_length.to_be_bytes());
             hasher.update(key);
 
-            hasher.update(&val_length.to_le_bytes());
+            hasher.update(&val_length.to_be_bytes());
             hasher.update(value);
 
             let res = hasher.finalize();
