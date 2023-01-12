@@ -7,14 +7,12 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-use rocksdb::{checkpoint::Checkpoint, ColumnFamilyDescriptor, WriteBatch};
 use rocksdb::DB;
+use rocksdb::{checkpoint::Checkpoint, ColumnFamilyDescriptor, WriteBatch};
 
 use crate::error::{Error, Result};
 use crate::proofs::{encode_into, query::QueryItem, Query};
-use crate::tree::{
-    Batch, Commit, Fetch, GetResult, Hash, Op, RefWalker, Tree, Walker, NULL_HASH,
-};
+use crate::tree::{Batch, Commit, Fetch, GetResult, Hash, Op, RefWalker, Tree, Walker, NULL_HASH};
 
 pub use self::snapshot::Snapshot;
 
@@ -479,11 +477,15 @@ fn load_root(db: &DB) -> Result<Option<Tree>> {
 }
 
 fn fetch_node(db: &rocksdb::DB, key: &[u8]) -> Result<Option<Tree>> {
-    Ok(db.get_pinned(key)?.map(|bytes| Tree::decode(key.to_vec(), &bytes)))
+    Ok(db
+        .get_pinned(key)?
+        .map(|bytes| Tree::decode(key.to_vec(), &bytes)))
 }
 
 fn fetch_existing_node(db: &rocksdb::DB, key: &[u8]) -> Result<Tree> {
-    fetch_node(db, key)?.map(Ok).unwrap_or_else(|| Err(Error::Key(format!("{:?}", key))))
+    fetch_node(db, key)?
+        .map(Ok)
+        .unwrap_or_else(|| Err(Error::Key(format!("{:?}", key))))
 }
 
 #[cfg(test)]
