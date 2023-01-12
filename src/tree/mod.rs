@@ -401,6 +401,34 @@ impl Tree {
 
         Ok(())
     }
+
+    pub fn get_value(&self, key: &[u8]) -> Result<GetResult> {
+        let mut cursor = self;
+
+        loop {
+            if key == cursor.key() {
+                return Ok(GetResult::Found(cursor.value().to_vec()));
+            }
+
+            let left = key < cursor.key();
+            let link = match cursor.link(left) {
+                None => return Ok(GetResult::NotFound), // not found
+                Some(link) => link,
+            };
+
+            let maybe_child = link.tree();
+            match maybe_child {
+                None => return Ok(GetResult::Pruned), // value is pruned, caller will have to fetch from disk
+                Some(child) => cursor = child,        // traverse to child
+            }
+        }
+    }
+}
+
+pub enum GetResult {
+    Found(Vec<u8>),
+    Pruned,
+    NotFound,
 }
 
 pub fn side_to_str(left: bool) -> &'static str {
@@ -503,8 +531,8 @@ mod test {
         assert_eq!(
             tree.child_hash(true),
             &[
-                129, 244, 14, 250, 8, 103, 198, 160, 114, 224, 141, 13, 165, 59, 12, 142, 0, 143,
-                74, 63, 39, 6, 51, 151, 50, 121, 148, 186, 49, 196, 170, 27
+                114, 93, 76, 193, 9, 87, 168, 251, 191, 152, 173, 130, 33, 46, 251, 13, 179, 15,
+                209, 218, 113, 72, 118, 83, 206, 100, 36, 49, 156, 239, 102, 205
             ]
         );
         assert_eq!(tree.child_hash(false), &NULL_HASH);
@@ -516,8 +544,8 @@ mod test {
         assert_eq!(
             tree.hash(),
             [
-                230, 116, 239, 59, 53, 95, 1, 20, 79, 227, 238, 105, 236, 240, 55, 23, 114, 121,
-                149, 82, 209, 118, 17, 13, 178, 42, 108, 167, 159, 171, 245, 173
+                36, 100, 183, 19, 15, 225, 83, 239, 215, 167, 216, 53, 52, 30, 234, 176, 74, 197,
+                161, 7, 102, 226, 181, 251, 145, 100, 74, 179, 253, 222, 183, 117
             ]
         );
     }
