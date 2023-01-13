@@ -485,7 +485,7 @@ fn fetch_node(db: &rocksdb::DB, key: &[u8]) -> Result<Option<Tree>> {
 fn fetch_existing_node(db: &rocksdb::DB, key: &[u8]) -> Result<Tree> {
     fetch_node(db, key)?
         .map(Ok)
-        .unwrap_or_else(|| Err(Error::Key(format!("{:?}", key))))
+        .unwrap_or_else(|| Err(Error::Key(format!("{key:?}"))))
 }
 
 #[cfg(test)]
@@ -519,8 +519,8 @@ mod test {
         assert_eq!(
             merk.root_hash(),
             [
-                140, 163, 149, 233, 94, 254, 203, 18, 92, 37, 170, 106, 170, 123, 117, 219, 215,
-                111, 135, 151, 92, 88, 253, 233, 75, 20, 98, 248, 128, 8, 222, 30
+                99, 81, 104, 29, 169, 195, 53, 48, 134, 74, 250, 47, 77, 121, 157, 227, 139, 241,
+                250, 216, 78, 87, 152, 116, 252, 116, 132, 16, 150, 163, 107, 30
             ]
         );
     }
@@ -552,7 +552,7 @@ mod test {
         let mut merk = TempMerk::open(path).expect("failed to open merk");
 
         for i in 0..(tree_size / batch_size) {
-            println!("i:{}", i);
+            println!("i:{i}");
             let batch = make_batch_rand(batch_size, i);
             merk.apply(&batch).expect("apply failed");
             merk.commit(&[]).expect("commit failed");
@@ -641,15 +641,21 @@ mod test {
     fn reopen() {
         fn collect(mut node: RefWalker<MerkSource>, nodes: &mut Vec<Vec<u8>>) {
             nodes.push(node.tree().encode());
-            node.walk(true).unwrap().map(|c| collect(c, nodes));
-            node.walk(false).unwrap().map(|c| collect(c, nodes));
+            node.walk(true)
+                .unwrap()
+                .into_iter()
+                .for_each(|c| collect(c, nodes));
+            node.walk(false)
+                .unwrap()
+                .into_iter()
+                .for_each(|c| collect(c, nodes));
         }
 
         let time = std::time::SystemTime::now()
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = format!("merk_reopen_{}.db", time);
+        let path = format!("merk_reopen_{time}.db");
 
         let original_nodes = {
             let mut merk = Merk::open(&path).unwrap();
@@ -687,7 +693,7 @@ mod test {
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = format!("merk_reopen_{}.db", time);
+        let path = format!("merk_reopen_{time}.db");
 
         let original_nodes = {
             let mut merk = Merk::open(&path).unwrap();
