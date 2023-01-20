@@ -11,7 +11,8 @@ fn insert_1m_10k_seq_memonly(b: &mut Bencher) {
     let initial_size = 1_000_000;
     let batch_size = 10_000;
 
-    let mut tree = Owner::new(make_tree_seq(initial_size));
+    let mut tree =
+        Owner::new(make_tree_seq(initial_size).expect("error constructing tree sequence"));
 
     let mut i = initial_size / batch_size;
     b.iter(|| {
@@ -41,7 +42,8 @@ fn update_1m_10k_seq_memonly(b: &mut Bencher) {
     let initial_size = 1_000_000;
     let batch_size = 10_000;
 
-    let mut tree = Owner::new(make_tree_seq(initial_size));
+    let mut tree =
+        Owner::new(make_tree_seq(initial_size).expect("error constructing tree sequence"));
 
     let mut i = 0;
     b.iter(|| {
