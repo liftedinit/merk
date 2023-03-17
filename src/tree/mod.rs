@@ -16,7 +16,7 @@ use ed::{Decode, Encode};
 
 use super::error::Result;
 pub use commit::{Commit, NoopCommit};
-pub use hash::{kv_hash, node_hash, Hash, Hasher, HASH_LENGTH, NULL_HASH};
+pub use hash::{kv_hash, node_hash, Hash, HASH_LENGTH, NULL_HASH};
 use kv::KV;
 pub use link::Link;
 pub use ops::{Batch, BatchEntry, Op, PanicSource};
@@ -155,7 +155,7 @@ impl Tree {
     /// Computes and returns the hash of the root node.
     #[inline]
     pub fn hash(&self) -> Hash {
-        node_hash::<Hasher>(
+        node_hash::<blake3::Hasher>(
             self.inner.kv.hash(),
             self.child_hash(true),
             self.child_hash(false),
@@ -497,6 +497,7 @@ mod test {
         });
         assert!(tree.child(true).is_none());
         assert!(tree.child(false).is_some());
+
         let fixed_tree = Some(Tree::new(vec![2], vec![3])?);
         let tree = tree.walk(true, |left_opt| {
             assert!(left_opt.is_none());
@@ -540,8 +541,8 @@ mod test {
         assert_eq!(
             tree.child_hash(true),
             &[
-                114, 93, 76, 193, 9, 87, 168, 251, 191, 152, 173, 130, 33, 46, 251, 13, 179, 15,
-                209, 218, 113, 72, 118, 83, 206, 100, 36, 49, 156, 239, 102, 205
+                129, 244, 14, 250, 8, 103, 198, 160, 114, 224, 141, 13, 165, 59, 12, 142, 0, 143,
+                74, 63, 39, 6, 51, 151, 50, 121, 148, 186, 49, 196, 170, 27
             ]
         );
         assert_eq!(tree.child_hash(false), &NULL_HASH);
@@ -554,8 +555,8 @@ mod test {
         assert_eq!(
             tree.hash(),
             [
-                36, 100, 183, 19, 15, 225, 83, 239, 215, 167, 216, 53, 52, 30, 234, 176, 74, 197,
-                161, 7, 102, 226, 181, 251, 145, 100, 74, 179, 253, 222, 183, 117
+                230, 116, 239, 59, 53, 95, 1, 20, 79, 227, 238, 105, 236, 240, 55, 23, 114, 121,
+                149, 82, 209, 118, 17, 13, 178, 42, 108, 167, 159, 171, 245, 173
             ]
         );
         Ok(())

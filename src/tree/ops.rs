@@ -382,8 +382,8 @@ mod test {
     }
 
     #[test]
-    fn delete_deep() {
-        let tree = make_tree_seq(50);
+    fn delete_deep() -> Result<()> {
+        let tree = make_tree_seq(50)?;
         let batch = [del_entry(5)];
         let (maybe_walker, deleted_keys) = Walker::new(tree, PanicSource {})
             .apply(&batch)
@@ -391,11 +391,12 @@ mod test {
         maybe_walker.expect("should be Some");
         assert_eq!(deleted_keys.len(), 1);
         assert_eq!(*deleted_keys.front().unwrap(), seq_key(5));
+        Ok(())
     }
 
     #[test]
-    fn delete_recursive() {
-        let tree = make_tree_seq(50);
+    fn delete_recursive() -> Result<()> {
+        let tree = make_tree_seq(50)?;
         let batch = [del_entry(29), del_entry(34)];
         let (maybe_walker, mut deleted_keys) = Walker::new(tree, PanicSource {})
             .apply(&batch)
@@ -404,11 +405,12 @@ mod test {
         assert_eq!(deleted_keys.len(), 2);
         assert_eq!(deleted_keys.pop_front().unwrap(), seq_key(29));
         assert_eq!(deleted_keys.pop_front().unwrap(), seq_key(34));
+        Ok(())
     }
 
     #[test]
-    fn delete_recursive_2() {
-        let tree = make_tree_seq(10);
+    fn delete_recursive_2() -> Result<()> {
+        let tree = make_tree_seq(10)?;
         let batch = [del_entry(7), del_entry(9)];
         let (maybe_walker, deleted_keys) = Walker::new(tree, PanicSource {})
             .apply(&batch)
@@ -417,11 +419,12 @@ mod test {
         let mut deleted_keys: Vec<&Vec<u8>> = deleted_keys.iter().collect();
         deleted_keys.sort();
         assert_eq!(deleted_keys, vec![&seq_key(7), &seq_key(9)]);
+        Ok(())
     }
 
     #[test]
-    fn rebalanced_delete() {
-        let tree = make_tree_seq(7);
+    fn rebalanced_delete() -> Result<()> {
+        let tree = make_tree_seq(7)?;
 
         let walker = Walker::new(tree, PanicSource {})
             .apply(&[(vec![0; 20], Delete)])
@@ -451,6 +454,7 @@ mod test {
         assert_eq!(iter.next().unwrap().0, seq_key(2));
         assert_eq!(iter.next().unwrap().0, seq_key(3));
         assert!(iter.next().is_none());
+        Ok(())
     }
 
     #[test]
@@ -527,18 +531,16 @@ mod test {
     }
 
     #[test]
-    fn delete_recursive_large() {
-        let tree = make_tree_seq(2_500);
+    fn delete_recursive_large() -> Result<()> {
+        let tree = make_tree_seq(2_500)?;
 
-        let mut batch = vec![];
-        for i in 500..2_000 {
-            batch.push(del_entry(i));
-        }
+        let batch = (500..2_000).map(del_entry).collect::<Vec<_>>();
 
         let (maybe_walker, deleted_keys) = Walker::new(tree, PanicSource {})
             .apply(&batch)
             .expect("apply errored");
         maybe_walker.expect("should be Some");
         assert_eq!(deleted_keys.len(), 1_500);
+        Ok(())
     }
 }

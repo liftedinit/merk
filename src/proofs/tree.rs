@@ -1,6 +1,7 @@
 use super::{Node, Op};
 use crate::error::{Error, Result};
-use crate::tree::{kv_hash, node_hash, Hash, Hasher, NULL_HASH};
+use crate::tree::{kv_hash, node_hash, Hash, NULL_HASH};
+use blake3::Hasher;
 
 /// Contains a tree's child node and its hash. The hash can always be assumed to
 /// be up-to-date.

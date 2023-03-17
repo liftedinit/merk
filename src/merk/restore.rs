@@ -342,8 +342,9 @@ mod tests {
     fn restore_test(batches: &[&Batch], expected_nodes: usize) {
         let mut original = TempMerk::new().unwrap();
         for batch in batches {
-            original.apply(batch, &[]).unwrap();
+            original.apply(batch).unwrap();
         }
+        original.commit(&[]).expect("commit failed");
         original.flush().unwrap();
 
         let chunks = original.chunks().unwrap();

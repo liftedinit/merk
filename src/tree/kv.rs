@@ -1,4 +1,5 @@
-use super::hash::{kv_hash, Hash, Hasher, HASH_LENGTH, NULL_HASH};
+use super::hash::{kv_hash, Hash, HASH_LENGTH, NULL_HASH};
+use blake3::Hasher;
 use ed::{Decode, Encode, Result};
 use std::{
     io::{Read, Write},

@@ -1025,8 +1025,8 @@ mod test {
     }
 
     #[test]
-    fn range_proof() {
-        let mut tree = make_tree_seq(10);
+    fn range_proof() -> Result<()> {
+        let mut tree = make_tree_seq(10)?;
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
 
         let queryitems = vec![QueryItem::Range(
@@ -1109,11 +1109,12 @@ mod test {
                 (vec![0, 0, 0, 0, 0, 0, 0, 6], vec![123; 60]),
             ]
         );
+        Ok(())
     }
 
     #[test]
-    fn range_proof_inclusive() {
-        let mut tree = make_tree_seq(10);
+    fn range_proof_inclusive() -> Result<()> {
+        let mut tree = make_tree_seq(10)?;
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
 
         let queryitems = vec![QueryItem::RangeInclusive(
@@ -1197,11 +1198,12 @@ mod test {
                 (vec![0, 0, 0, 0, 0, 0, 0, 7], vec![123; 60]),
             ]
         );
+        Ok(())
     }
 
     #[test]
-    fn range_proof_missing_upper_bound() {
-        let mut tree = make_tree_seq(10);
+    fn range_proof_missing_upper_bound() -> Result<()> {
+        let mut tree = make_tree_seq(10)?;
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
 
         let queryitems = vec![QueryItem::Range(
@@ -1284,11 +1286,12 @@ mod test {
                 (vec![0, 0, 0, 0, 0, 0, 0, 6], vec![123; 60]),
             ]
         );
+        Ok(())
     }
 
     #[test]
-    fn range_proof_missing_lower_bound() {
-        let mut tree = make_tree_seq(10);
+    fn range_proof_missing_lower_bound() -> Result<()> {
+        let mut tree = make_tree_seq(10)?;
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
 
         let queryitems = vec![
@@ -1366,6 +1369,7 @@ mod test {
         }
         let res = verify_query(bytes.as_slice(), &query, tree.hash()).unwrap();
         assert_eq!(res, vec![(vec![0, 0, 0, 0, 0, 0, 0, 6], vec![123; 60]),]);
+        Ok(())
     }
 
     #[test]

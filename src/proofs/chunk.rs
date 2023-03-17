@@ -295,8 +295,8 @@ mod tests {
     }
 
     #[test]
-    fn small_trunk_roundtrip() {
-        let mut tree = make_tree_seq(31);
+    fn small_trunk_roundtrip() -> Result<()> {
+        let mut tree = make_tree_seq(31)?;
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
 
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
@@ -309,11 +309,12 @@ mod tests {
         assert_eq!(counts.hash, 0);
         assert_eq!(counts.kv, 32);
         assert_eq!(counts.kvhash, 0);
+        Ok(())
     }
 
     #[test]
-    fn big_trunk_roundtrip() {
-        let mut tree = make_tree_seq(2u64.pow(MIN_TRUNK_HEIGHT as u32 * 2 + 1) - 1);
+    fn big_trunk_roundtrip() -> Result<()> {
+        let mut tree = make_tree_seq(2u64.pow(MIN_TRUNK_HEIGHT as u32 * 2 + 1) - 1)?;
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
 
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
@@ -328,6 +329,7 @@ mod tests {
         );
         assert_eq!(counts.kv, 2usize.pow(MIN_TRUNK_HEIGHT as u32) - 1);
         assert_eq!(counts.kvhash, MIN_TRUNK_HEIGHT + 1);
+        Ok(())
     }
 
     #[test]
@@ -413,11 +415,13 @@ mod tests {
     fn leaf_chunk_roundtrip() {
         let mut merk = TempMerk::new().unwrap();
         let batch = make_batch_seq(0..31);
-        merk.apply(batch.as_slice(), &[]).unwrap();
+        merk.apply(batch.as_slice()).unwrap();
+        merk.commit(&[]).expect("commit failed");
 
-        let root_node = merk.tree.take();
-        let root_key = root_node.as_ref().unwrap().key().to_vec();
-        merk.tree.set(root_node);
+        let root_key = {
+            let tree = merk.tree.read().unwrap();
+            tree.as_ref().unwrap().key().to_vec()
+        };
 
         // whole tree as 1 leaf
         let mut iter = merk.db.raw_iterator();
