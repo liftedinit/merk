@@ -125,7 +125,7 @@ where
 pub(crate) fn get_next_chunk(iter: &mut DBRawIterator, end_key: Option<&[u8]>) -> Result<Vec<Op>> {
     let mut chunk = Vec::with_capacity(512);
     let mut stack = Vec::with_capacity(32);
-    let mut node = Tree::new(vec![], vec![]);
+    let mut node = Tree::new(vec![], vec![])?;
 
     while iter.valid() {
         let key = iter.key().unwrap();
@@ -181,8 +181,8 @@ pub(crate) fn verify_leaf<I: Iterator<Item = Result<Op>>>(
         _ => Err(Error::Tree("Leaf chunks must contain full subtree".into())),
     })?;
 
-    if tree.hash() != expected_hash {
-        return Err(Error::HashMismatch(expected_hash, tree.hash()));
+    if tree.hash()? != expected_hash {
+        return Err(Error::HashMismatch(expected_hash, tree.hash()?));
     }
 
     Ok(tree)
@@ -303,7 +303,7 @@ mod tests {
         assert!(!has_more);
 
         println!("{:?}", &proof);
-        let (trunk, _) = verify_trunk(proof.into_iter().map(|op| Ok(op))).unwrap();
+        let (trunk, _) = verify_trunk(proof.into_iter().map(Ok)).unwrap();
 
         let counts = count_node_types(trunk);
         assert_eq!(counts.hash, 0);
@@ -318,7 +318,7 @@ mod tests {
 
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
         assert!(has_more);
-        let (trunk, _) = verify_trunk(proof.into_iter().map(|op| Ok(op))).unwrap();
+        let (trunk, _) = verify_trunk(proof.into_iter().map(Ok)).unwrap();
 
         let counts = count_node_types(trunk);
         // are these formulas correct for all values of `MIN_TRUNK_HEIGHT`? 🤔
@@ -331,78 +331,82 @@ mod tests {
     }
 
     #[test]
-    fn one_node_tree_trunk_roundtrip() {
-        let mut tree = BaseTree::new(vec![0], vec![]);
+    fn one_node_tree_trunk_roundtrip() -> Result<()> {
+        let mut tree = BaseTree::new(vec![0], vec![])?;
         tree.commit(&mut NoopCommit {}).unwrap();
 
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
         assert!(!has_more);
 
-        let (trunk, _) = verify_trunk(proof.into_iter().map(|op| Ok(op))).unwrap();
+        let (trunk, _) = verify_trunk(proof.into_iter().map(Ok)).unwrap();
         let counts = count_node_types(trunk);
         assert_eq!(counts.hash, 0);
         assert_eq!(counts.kv, 1);
         assert_eq!(counts.kvhash, 0);
+        Ok(())
     }
 
     #[test]
-    fn two_node_right_heavy_tree_trunk_roundtrip() {
+    fn two_node_right_heavy_tree_trunk_roundtrip() -> Result<()> {
         // 0
         //  \
         //   1
         let mut tree =
-            BaseTree::new(vec![0], vec![]).attach(false, Some(BaseTree::new(vec![1], vec![])));
+            BaseTree::new(vec![0], vec![])?.attach(false, Some(BaseTree::new(vec![1], vec![])?));
         tree.commit(&mut NoopCommit {}).unwrap();
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
         assert!(!has_more);
 
-        let (trunk, _) = verify_trunk(proof.into_iter().map(|op| Ok(op))).unwrap();
+        let (trunk, _) = verify_trunk(proof.into_iter().map(Ok)).unwrap();
         let counts = count_node_types(trunk);
         assert_eq!(counts.hash, 0);
         assert_eq!(counts.kv, 2);
         assert_eq!(counts.kvhash, 0);
+        Ok(())
     }
 
     #[test]
-    fn two_node_left_heavy_tree_trunk_roundtrip() {
+    fn two_node_left_heavy_tree_trunk_roundtrip() -> Result<()> {
         //   1
         //  /
         // 0
         let mut tree =
-            BaseTree::new(vec![1], vec![]).attach(true, Some(BaseTree::new(vec![0], vec![])));
+            BaseTree::new(vec![1], vec![])?.attach(true, Some(BaseTree::new(vec![0], vec![])?));
         tree.commit(&mut NoopCommit {}).unwrap();
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
         assert!(!has_more);
 
-        let (trunk, _) = verify_trunk(proof.into_iter().map(|op| Ok(op))).unwrap();
+        let (trunk, _) = verify_trunk(proof.into_iter().map(Ok)).unwrap();
         let counts = count_node_types(trunk);
         assert_eq!(counts.hash, 0);
         assert_eq!(counts.kv, 2);
         assert_eq!(counts.kvhash, 0);
+        Ok(())
     }
 
     #[test]
-    fn three_node_tree_trunk_roundtrip() {
+    fn three_node_tree_trunk_roundtrip() -> Result<()> {
         //   1
         //  / \
         // 0   2
-        let mut tree = BaseTree::new(vec![1], vec![])
-            .attach(true, Some(BaseTree::new(vec![0], vec![])))
-            .attach(false, Some(BaseTree::new(vec![2], vec![])));
+        let mut tree = BaseTree::new(vec![1], vec![])?
+            .attach(true, Some(BaseTree::new(vec![0], vec![])?))
+            .attach(false, Some(BaseTree::new(vec![2], vec![])?));
         tree.commit(&mut NoopCommit {}).unwrap();
 
         let mut walker = RefWalker::new(&mut tree, PanicSource {});
         let (proof, has_more) = walker.create_trunk_proof().unwrap();
         assert!(!has_more);
 
-        let (trunk, _) = verify_trunk(proof.into_iter().map(|op| Ok(op))).unwrap();
+        let (trunk, _) = verify_trunk(proof.into_iter().map(Ok)).unwrap();
         let counts = count_node_types(trunk);
         assert_eq!(counts.hash, 0);
         assert_eq!(counts.kv, 3);
         assert_eq!(counts.kvhash, 0);
+        Ok(())
     }
 
     #[test]
@@ -419,7 +423,7 @@ mod tests {
         let mut iter = merk.db.raw_iterator();
         iter.seek_to_first();
         let chunk = get_next_chunk(&mut iter, None).unwrap();
-        let ops = chunk.into_iter().map(|op| Ok(op));
+        let ops = chunk.into_iter().map(Ok);
         let chunk = verify_leaf(ops, merk.root_hash()).unwrap();
         let counts = count_node_types(chunk);
         assert_eq!(counts.kv, 31);
@@ -432,12 +436,12 @@ mod tests {
 
         // left leaf
         let chunk = get_next_chunk(&mut iter, Some(root_key.as_slice())).unwrap();
-        let ops = chunk.into_iter().map(|op| Ok(op));
+        let ops = chunk.into_iter().map(Ok);
         let chunk = verify_leaf(
             ops,
             [
-                34, 133, 104, 181, 253, 249, 189, 168, 15, 209, 70, 164, 224, 192, 18, 36, 1, 74,
-                79, 9, 158, 188, 98, 47, 53, 32, 109, 14, 151, 13, 49, 74,
+                89, 129, 189, 87, 229, 178, 155, 195, 54, 144, 248, 243, 103, 71, 228, 172, 163,
+                193, 94, 87, 248, 34, 10, 83, 141, 28, 237, 227, 247, 25, 158, 145,
             ],
         )
         .unwrap();
@@ -448,12 +452,12 @@ mod tests {
 
         // right leaf
         let chunk = get_next_chunk(&mut iter, None).unwrap();
-        let ops = chunk.into_iter().map(|op| Ok(op));
+        let ops = chunk.into_iter().map(Ok);
         let chunk = verify_leaf(
             ops,
             [
-                164, 29, 123, 213, 6, 25, 247, 238, 127, 53, 5, 70, 255, 87, 87, 204, 188, 169,
-                181, 4, 185, 180, 74, 52, 244, 134, 75, 47, 105, 129, 209, 112,
+                106, 189, 157, 182, 120, 31, 131, 28, 104, 107, 209, 63, 201, 238, 48, 3, 138, 53,
+                77, 178, 18, 138, 222, 194, 247, 8, 33, 2, 193, 180, 237, 173,
             ],
         )
         .unwrap();
