@@ -18,6 +18,7 @@ pub type Hash = [u8; HASH_LENGTH];
 /// is longer than 65,535 bytes.
 pub fn kv_hash<D: Digest>(key: &[u8], value: &[u8]) -> Result<Hash, TryFromIntError> {
     let mut hasher = D::new();
+    hasher.update([0]);
     u8::try_from(key.len())
         .and_then(|key| u16::try_from(value.len()).map(|value| (key, value)))
         .map(|(key_length, val_length)| {
@@ -39,6 +40,7 @@ pub fn kv_hash<D: Digest>(key: &[u8], value: &[u8]) -> Result<Hash, TryFromIntEr
 pub fn node_hash<D: Digest>(kv: &Hash, left: &Hash, right: &Hash) -> Hash {
     // TODO: make generic to allow other hashers
     let mut hasher = D::new();
+    hasher.update([1]);
     hasher.update(kv);
     hasher.update(left);
     hasher.update(right);
