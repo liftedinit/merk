@@ -2,7 +2,6 @@ pub mod chunks;
 pub mod restore;
 pub mod snapshot;
 
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::LinkedList;
 use std::path::{Path, PathBuf};

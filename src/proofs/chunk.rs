@@ -416,7 +416,7 @@ mod tests {
         merk.apply(batch.as_slice(), &[]).unwrap();
 
         let root_key = {
-            let mut tree = merk.tree.read().unwrap();
+            let tree = merk.tree.read().unwrap();
             tree.as_ref().unwrap().key().to_vec()
         };
 
